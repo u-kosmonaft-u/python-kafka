@@ -1,12 +1,11 @@
 from kafka import KafkaProducer
 import json
+import time
 from numpy.random import choice, randint
 
 
-producer = KafkaProducer(bootstrap_servers=['192.168.10.50:9092'],
+producer = KafkaProducer(bootstrap_servers=['192.168.10.60:9092', '192.168.10.61:9092', '192.168.10.62:9092'],
                          value_serializer=lambda v: json.dumps(v).encode('utf-8'))
-
-
 def get_random_value():
     new_dict = {}
 
@@ -22,23 +21,22 @@ def get_random_value():
 
     return new_dict
 
+while True:
+    try:
+        data = get_random_value()
+        json_data = json.dumps( data )
+        future = producer.send( 'pythonTopic', json_data )
+        record_metadata = future.get( timeout=10 )
 
-data = get_random_value()
-my_topic = 'test'
-json_data = json.dumps(data)
+        print( '--> The message has been sent to a topic: \
+                {}, partition: {}, offset: {}' \
+               .format( record_metadata.topic,
+                        record_metadata.partition,
+                        record_metadata.offset ) )
 
-try:
-    future = producer.send('test', json_data)
-    record_metadata = future.get(timeout=10)
+    except Exception as e:
+        print( '--> It seems an Error occurred: {}'.format( e ) )
 
-    print('--> The message has been sent to a topic: \
-            {}, partition: {}, offset: {}' \
-            .format(record_metadata.topic,
-                record_metadata.partition,
-                record_metadata.offset ))
-
-except Exception as e:
-    print('--> It seems an Error occurred: {}'.format(e))
-
-finally:
-    producer.flush()
+    finally:
+        producer.flush()
+        time.sleep( 1.5 )
